@@ -1,0 +1,8 @@
+# ignore ALL .zip files
+*.zip
+
+#ignore files
+ERId.txt
+
+# ignore ALL files in ANY directory named temp
+temp/
