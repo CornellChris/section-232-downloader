@@ -180,13 +180,10 @@ class GoogleSheet:
 
 if __name__ == "__main__":
     working_dir = os.getcwd()
-    print(zipfile36.__version__)
-    #gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
-    #gs.download_tariff_zip(local_file_path)
-    #gs.extract_zip()
-    #print("ex")
-    #gs.retrive_ids()
-    #print("rt")
-    #gs.save_ids(gs.tarrif_data)
-    #gs.upload_to_sheets(gs.tarrif_data)
-    #gs.remove_files() #Uncomment during production
+    gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
+    gs.download_tariff_zip(local_file_path)
+    gs.extract_zip()
+    gs.retrive_ids()
+    gs.save_ids(gs.tarrif_data)
+    gs.upload_to_sheets(gs.tarrif_data)
+    gs.remove_files() #Uncomment during production
