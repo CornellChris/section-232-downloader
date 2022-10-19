@@ -4,14 +4,14 @@ import os
 import pandas as pd
 import chardet
 import pygsheets
-from google.oauth2 import service_account
-
+import sys
+sys.modules.keys()
 #---Global info---
 url = 'https://232app.azurewebsites.net/data/BIS232Data.zip'
 local_file_path = './BIS232Data.zip'
 cert_file = "certs.json"
 sheet_name = "tariffs"
-temp_file_path = "./temp/"
+temp_file_path = "./temp/"    
 #-----------------
 class GoogleSheet:
     def __init__(self, tariff_url, certs_file, sheet_name, dir):
@@ -19,6 +19,7 @@ class GoogleSheet:
         self._certs_file = certs_file
         self._sheet_name = sheet_name
         self._working_dir = dir
+        self._client = None
         self._client = self.init_client()
         self._zip_file_location = None
         self._tariff_data = None
@@ -30,7 +31,9 @@ class GoogleSheet:
             client = pygsheets.authorize(service_file=f"{self._working_dir}\\{self._certs_file}")
             print(client)
         except Exception as e:
+            print(f"{self._working_dir}\\{self._certs_file}")
             print(e)
+        print(client)
         return client
 
     def download_tariff_zip(self, local_file_path):
@@ -65,6 +68,7 @@ class GoogleSheet:
 
         with open(temp_file_path + 'ExclusionRequests.txt', 'rb') as file:
             print(chardet.detect(file.read()))
+            print("char")
 
         df = pd.read_csv(temp_file_path + 'ExclusionRequests.txt', header= 0, encoding="UTF-16",on_bad_lines='skip', low_memory= False)
         columns_to_keep = ["ERId","Company","Product","PublishDate","Form_Number",
@@ -72,13 +76,11 @@ class GoogleSheet:
                             "MetalClass","RequestingOrg_OrgLegalName", "RequestingOrg_HeadquartersCountry",
                             "RequestingImporter_OrgLegalName","RequestingImporter_HeadquartersCountry", 
                             "RequestingParent_OrgLegalName", "RequestingParent_HeadquartersCountry", 
-                            "RequestingAuthRep_CountryLocation",  "ExclusionRequesterActivity",
+                            "RequestingAuthRep_CountryLocation",  "ExclusionRequesterActivity","ExclusionExplanation_PercentageNotAvailable",
                             "TotalRequestedAnnualExclusionQuantity", "ExclusionExplanation_AvgAnnualConsumption",
-                            "ExclusionExplanation_Explanation", "ExclusionExplanation_PercentageNotAvailable",
-                            "ExclusionExplanation_DeliveryEstimate","ExclusionExplanation_ManufactureEstimate",
-                            "ExclusionExplanation_ShipmentDaysEstimate","ExclusionExplanation_ShipmentQtyEstimate","NonUSProducer_BehalfOf",
-                            "NonUSProducer_ProducerName","NonUSProducer_HeadquartersCountry","SubmissionCertification_CompanyName",
-                            "Created","PublicStatus"]
+                            "ExclusionExplanation_Explanation", 
+                            "NonUSProducer_BehalfOf","NonUSProducer_ProducerName","NonUSProducer_HeadquartersCountry",
+                            "SubmissionCertification_CompanyName","Created","PublicStatus"]
 
         self._tariff_data  = df[columns_to_keep].copy()
         self._tariff_data  = self._tariff_data.sort_values("ERId", ascending=False)
@@ -111,9 +113,8 @@ class GoogleSheet:
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df.head(100), (0,0))
+        workbook.set_dataframe(df, (0,0))
 
- 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
         return string_list
@@ -138,7 +139,6 @@ class GoogleSheet:
                 f.write(ERId_s)
             print("written")    
             
-
     def compare_id(self, l, l_old):
         '''Finds the difference of 2 lists and returns the indexes as a list'''
         difference = set(l).difference(set(l_old))
@@ -154,10 +154,14 @@ class GoogleSheet:
             with open('ERId.txt', 'w') as f:
                 f.write("")
             self.retrive_ids()
-            
+
         self._ERId_old = s.split(",")
 
         print(len(self._ERId_old))
+    def remove_files(self):
+        os.remove(local_file_path)
+        os.remove("temp/ExclusionRequests.txt")
+        os.removedirs("temp")
     @property
     def tarrif_data(self):
         return self._tariff_data
@@ -176,10 +180,13 @@ class GoogleSheet:
 
 if __name__ == "__main__":
     working_dir = os.getcwd()
-    print(working_dir)
-    gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
-    gs.download_tariff_zip(local_file_path)
-    gs.extract_zip()
-    gs.retrive_ids()
-    gs.save_ids(gs.tarrif_data)
-    gs.upload_to_sheets(gs.tarrif_data)
+    print(zipfile36.__version__)
+    #gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
+    #gs.download_tariff_zip(local_file_path)
+    #gs.extract_zip()
+    #print("ex")
+    #gs.retrive_ids()
+    #print("rt")
+    #gs.save_ids(gs.tarrif_data)
+    #gs.upload_to_sheets(gs.tarrif_data)
+    #gs.remove_files() #Uncomment during production

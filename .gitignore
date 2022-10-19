@@ -3,6 +3,7 @@
 
 #ignore files
 ERId.txt
-
+certs.json
+output.xlsx
 # ignore ALL files in ANY directory named temp
 temp/
