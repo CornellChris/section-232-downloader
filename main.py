@@ -28,7 +28,7 @@ class GoogleSheet:
         self._tariff_data_new = None
     def init_client(self):
         try:
-            client = pygsheets.authorize(service_file=f"{self._working_dir}\\{self._certs_file}")
+            client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}")
             print(client)
         except Exception as e:
             print(f"{self._working_dir}\\{self._certs_file}")
