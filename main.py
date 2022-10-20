@@ -134,7 +134,7 @@ class GoogleSheet:
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df, (0,0))
+        workbook.set_dataframe(df.head(100), (0,0))
 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
