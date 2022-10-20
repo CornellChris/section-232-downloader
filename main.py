@@ -4,8 +4,8 @@ import os
 import pandas as pd
 import chardet
 import pygsheets
-import sys
-sys.modules.keys()
+import tracemalloc #do not push to libray heroku
+
 #---Global info---
 url = 'https://232app.azurewebsites.net/data/BIS232Data.zip'
 local_file_path = './BIS232Data.zip'
@@ -13,8 +13,22 @@ cert_file = "certs.json"
 sheet_name = "tariffs"
 temp_file_path = "./temp/"    
 #-----------------
+#------DEBUG FUNCTIONS -----#
+# def tracing_start():
+#     tracemalloc.stop()
+#     print("nTracing Status : ", tracemalloc.is_tracing())
+#     tracemalloc.start()
+#     print("Tracing Status : ", tracemalloc.is_tracing())
+# def tracing_mem():
+#     first_size, first_peak = tracemalloc.get_traced_memory()
+#     peak = first_peak/(1024*1024)
+#     print("Peak Size in MB - ", peak)
+#------END DEBUG FUNCTIONS -----#
+
 class GoogleSheet:
     def __init__(self, tariff_url, certs_file, sheet_name, dir):
+        
+
         self._tariff_url = tariff_url
         self._certs_file = certs_file
         self._sheet_name = sheet_name
@@ -26,9 +40,10 @@ class GoogleSheet:
         self._ERId = None
         self._ERId_old = None
         self._tariff_data_new = None
+        
     def init_client(self):
         try:
-            client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}")
+            client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}") #Change \\ to / on unix systems
             print(client)
         except Exception as e:
             print(f"{self._working_dir}\\{self._certs_file}")
@@ -48,6 +63,7 @@ class GoogleSheet:
 
     def extract_zip(self):
         print("extracting zip")
+
         if not os.path.exists(temp_file_path):
             with ZipFile(local_file_path, 'r') as zipObj:
             # Extract all the contents of zip file in different directory
@@ -65,12 +81,20 @@ class GoogleSheet:
                     print("Already_exists")
                 else:
                     os.remove(file_path)
+        #tracing_start()
 
-        with open(temp_file_path + 'ExclusionRequests.txt', 'rb') as file:
-            print(chardet.detect(file.read()))
-            print("char")
+        chunksize = 10 ** 3
+        df_list = []
+        for chunk in pd.read_csv(temp_file_path + 'ExclusionRequests.txt', header= 0, chunksize= 10000,encoding="UTF-16",on_bad_lines='skip', low_memory= False):
+            df_list += [chunk.copy()]
+        #557MB
+        #tracing_mem() 
 
-        df = pd.read_csv(temp_file_path + 'ExclusionRequests.txt', header= 0, encoding="UTF-16",on_bad_lines='skip', low_memory= False)
+        df = pd.concat(df_list)
+        #818MB
+
+
+
         columns_to_keep = ["ERId","Company","Product","PublishDate","Form_Number",
                             "Form_ExpirationDate","Product_From_JSON","HTSUSCode_From_JSON", 
                             "MetalClass","RequestingOrg_OrgLegalName", "RequestingOrg_HeadquartersCountry",
@@ -85,6 +109,8 @@ class GoogleSheet:
         self._tariff_data  = df[columns_to_keep].copy()
         self._tariff_data  = self._tariff_data.sort_values("ERId", ascending=False)
         self._ERId =  self.int_list_to_string(df['ERId'].tolist())
+        #473
+
     def data_frame_to_excel(self, df):
         df.to_excel('output.xlsx')
 
@@ -102,18 +128,19 @@ class GoogleSheet:
         changesbook = sheet[1]
         #only make changes to changes sheet if changes have happened 
         #Doing this to avoid wiping the changes sheet each time you run the software
-        if(len(diff) > 0 and len(diff) <= 100000):
+        if(len(diff) > 0 and len(diff) <= 100000): #Making sure the length is less than 100000 keeps us from overloading google sheets  
             changesbook.clear()
             changesbook.resize(df_b.shape[0], df_b.shape[1])
             changesbook.set_dataframe(df_b, (0,0))
             print(len(diff))
             print("Updated Sheets")
-        elif(len(diff) >= 100000):
+
+        elif(len(diff) >= df.shape[0]/2):
             print("Probably first time populating wont update sheets changes")
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df, (0,0))
+        workbook.set_dataframe(df.head(), (0,0))
 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
@@ -141,11 +168,13 @@ class GoogleSheet:
             
     def compare_id(self, l, l_old):
         '''Finds the difference of 2 lists and returns the indexes as a list'''
-        difference = set(l).difference(set(l_old))
+
+        difference = set(l).difference(set(l_old)) 
        
         return list(difference)
 
-    def retrive_ids(self):
+    def retrieves_ids(self):
+        '''Retrieves ERId list from the local text file'''
         s = ""
         try:
             with open('ERId.txt', 'r') as f:
@@ -153,15 +182,19 @@ class GoogleSheet:
         except:
             with open('ERId.txt', 'w') as f:
                 f.write("")
-            self.retrive_ids()
+            self.retrieves_ids()
 
         self._ERId_old = s.split(",")
 
         print(len(self._ERId_old))
+
     def remove_files(self):
+        '''Removes the downloaded files to prevent from re-using them'''
         os.remove(local_file_path)
         os.remove("temp/ExclusionRequests.txt")
         os.removedirs("temp")
+        print('Deleted Files')
+
     @property
     def tarrif_data(self):
         return self._tariff_data
@@ -182,8 +215,10 @@ if __name__ == "__main__":
     working_dir = os.getcwd()
     gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
     gs.download_tariff_zip(local_file_path)
+
     gs.extract_zip()
-    gs.retrive_ids()
+
+    gs.retrieves_ids()
     gs.save_ids(gs.tarrif_data)
     gs.upload_to_sheets(gs.tarrif_data)
     gs.remove_files() #Uncomment during production
