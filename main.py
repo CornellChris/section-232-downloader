@@ -46,7 +46,7 @@ class GoogleSheet:
             client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}") #Change \\ to / on unix systems
             print(client)
         except Exception as e:
-            print(f"{self._working_dir}\\{self._certs_file}")
+            print(f"{self._working_dir}/{self._certs_file}")
             print(e)
         print(client)
         return client
@@ -81,20 +81,8 @@ class GoogleSheet:
                     print("Already_exists")
                 else:
                     os.remove(file_path)
-        #tracing_start()
 
         chunksize = 10 ** 3
-        df_list = []
-        for chunk in pd.read_csv(temp_file_path + 'ExclusionRequests.txt', header= 0, chunksize= 10000,encoding="UTF-16",on_bad_lines='skip', low_memory= False):
-            df_list += [chunk.copy()]
-        #557MB
-        #tracing_mem() 
-
-        df = pd.concat(df_list)
-        #818MB
-
-
-
         columns_to_keep = ["ERId","Company","Product","PublishDate","Form_Number",
                             "Form_ExpirationDate","Product_From_JSON","HTSUSCode_From_JSON", 
                             "MetalClass","RequestingOrg_OrgLegalName", "RequestingOrg_HeadquartersCountry",
@@ -105,8 +93,14 @@ class GoogleSheet:
                             "ExclusionExplanation_Explanation", 
                             "NonUSProducer_BehalfOf","NonUSProducer_ProducerName","NonUSProducer_HeadquartersCountry",
                             "SubmissionCertification_CompanyName","Created","PublicStatus"]
+        df_list = []
+        for chunk in pd.read_csv(temp_file_path + 'ExclusionRequests.txt', usecols= columns_to_keep,header= 0, chunksize= 50000,encoding="UTF-16",on_bad_lines='skip', low_memory= False):
+            df_list += [chunk.copy()]
+        #557MB
 
-        self._tariff_data  = df[columns_to_keep].copy()
+        df = pd.concat(df_list)
+        
+        self._tariff_data  = df.copy()
         self._tariff_data  = self._tariff_data.sort_values("ERId", ascending=False)
         self._ERId =  self.int_list_to_string(df['ERId'].tolist())
         #473
@@ -140,7 +134,7 @@ class GoogleSheet:
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df.head(), (0,0))
+        workbook.set_dataframe(df, (0,0))
 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
@@ -212,6 +206,7 @@ class GoogleSheet:
         return self._ERId_old
 
 if __name__ == "__main__":
+
     working_dir = os.getcwd()
     gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
     gs.download_tariff_zip(local_file_path)
