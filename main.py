@@ -2,7 +2,6 @@ from zipfile import ZipFile
 import wget
 import os
 import pandas as pd
-import chardet
 import pygsheets
 #import tracemalloc #only import if you need to use profiler
 
@@ -43,10 +42,10 @@ class GoogleSheet:
     def init_client(self):
         print("Initializing Client")
         try:
-            client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}") #Change \\ to / on unix systems
+            client = pygsheets.authorize(service_file=f"{self._working_dir}\\{self._certs_file}") #Change \\ to / on unix systems
             print(client)
         except Exception as e:
-            print(f"{self._working_dir}/{self._certs_file}")
+            print(f"{self._working_dir}\\{self._certs_file}")
             print(e)
         print(client)
         return client
@@ -84,7 +83,6 @@ class GoogleSheet:
                 else:
                     os.remove(file_path)
 
-        chunksize = 10 ** 3
         columns_to_keep = ["ERId","Company","Product","PublishDate","Form_Number",
                             "Form_ExpirationDate","Product_From_JSON","HTSUSCode_From_JSON", 
                             "MetalClass","RequestingOrg_OrgLegalName", "RequestingOrg_HeadquartersCountry",
@@ -128,7 +126,7 @@ class GoogleSheet:
             changesbook.clear()
             changesbook.resize(df_b.shape[0], df_b.shape[1])
             changesbook.set_dataframe(df_b, (0,0))
-            print(len(diff))
+            print(f"Changed Rows {len(diff)}")
             print("Updated Sheets")
 
         elif(len(diff) >= df.shape[0]/2):
@@ -136,7 +134,7 @@ class GoogleSheet:
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df, (0,0))
+        workbook.set_dataframe(df.head(), (0,0))
 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
@@ -182,7 +180,7 @@ class GoogleSheet:
 
         self._ERId_old = s.split(",")
 
-        print(len(self._ERId_old))
+        print(f"Rows in ERId file f{len(self._ERId_old)}")
 
     def remove_files(self):
         '''Removes the downloaded files to prevent from re-using them'''
