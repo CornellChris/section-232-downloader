@@ -95,17 +95,16 @@ class GoogleSheet:
                             "ExclusionExplanation_Explanation", 
                             "NonUSProducer_BehalfOf","NonUSProducer_ProducerName","NonUSProducer_HeadquartersCountry",
                             "SubmissionCertification_CompanyName","Created","PublicStatus"]
+        #Loads csv by small chunks instead of all at once to reduce memory useage
         df_list = []
         for chunk in pd.read_csv(temp_file_path + 'ExclusionRequests.txt', usecols= columns_to_keep,header= 0, chunksize= 50000,encoding="UTF-16",on_bad_lines='skip', low_memory= False):
             df_list += [chunk.copy()]
-        #557MB
 
         df = pd.concat(df_list)
         
         self._tariff_data  = df.copy()
         self._tariff_data  = self._tariff_data.sort_values("ERId", ascending=False)
         self._ERId =  self.int_list_to_string(df['ERId'].tolist())
-        #473
 
     def data_frame_to_excel(self, df):
         df.to_excel('output.xlsx')
