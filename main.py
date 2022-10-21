@@ -4,15 +4,16 @@ import os
 import pandas as pd
 import chardet
 import pygsheets
-import tracemalloc #do not push to libray heroku
+#import tracemalloc #only import if you need to use profiler
 
-#---Global info---
+#------GLOBAL-------#
 url = 'https://232app.azurewebsites.net/data/BIS232Data.zip'
 local_file_path = './BIS232Data.zip'
 cert_file = "certs.json"
 sheet_name = "tariffs"
 temp_file_path = "./temp/"    
-#-----------------
+#---END OF GLOBAL---#
+
 #------DEBUG FUNCTIONS -----#
 # def tracing_start():
 #     tracemalloc.stop()
@@ -27,8 +28,6 @@ temp_file_path = "./temp/"
 
 class GoogleSheet:
     def __init__(self, tariff_url, certs_file, sheet_name, dir):
-        
-
         self._tariff_url = tariff_url
         self._certs_file = certs_file
         self._sheet_name = sheet_name
@@ -42,6 +41,7 @@ class GoogleSheet:
         self._tariff_data_new = None
         
     def init_client(self):
+        print("Initializing Client")
         try:
             client = pygsheets.authorize(service_file=f"{self._working_dir}/{self._certs_file}") #Change \\ to / on unix systems
             print(client)
@@ -52,6 +52,7 @@ class GoogleSheet:
         return client
 
     def download_tariff_zip(self, local_file_path):
+        print("Downloading Tariff zip from the Feds")
         # Make http request for remote file data
         print(url)
         print(local_file_path)
@@ -62,6 +63,7 @@ class GoogleSheet:
                 print(e)
 
     def extract_zip(self):
+        print(" ")
         print("extracting zip")
 
         if not os.path.exists(temp_file_path):
@@ -76,9 +78,9 @@ class GoogleSheet:
             for file in file_list:
                 file_path = temp_file_path + file
                 if (file == 'ExclusionRequests.txt'):
-                    print("Already_exists2")
+                    print("Already exists")
                 elif(file == 'ExclusionRequests.csv'):
-                    print("Already_exists")
+                    print("Already exists")
                 else:
                     os.remove(file_path)
 
@@ -109,6 +111,7 @@ class GoogleSheet:
         df.to_excel('output.xlsx')
 
     def upload_to_sheets(self, df):
+        print("Uploading to sheets")
         try:
             sheet = self._client.open(self._sheet_name)
         except Exception as e:
@@ -134,7 +137,7 @@ class GoogleSheet:
 
         workbook.clear()
         workbook.resize(df.shape[0], df.shape[1])
-        workbook.set_dataframe(df.head(100), (0,0))
+        workbook.set_dataframe(df, (0,0))
 
     def int_list_to_string(self, int_list):
         string_list = [str(x) for x in int_list]
@@ -184,6 +187,7 @@ class GoogleSheet:
 
     def remove_files(self):
         '''Removes the downloaded files to prevent from re-using them'''
+        print("Removing files")
         os.remove(local_file_path)
         os.remove("temp/ExclusionRequests.txt")
         os.removedirs("temp")
@@ -206,14 +210,11 @@ class GoogleSheet:
         return self._ERId_old
 
 if __name__ == "__main__":
-
     working_dir = os.getcwd()
     gs =  GoogleSheet(url, cert_file, sheet_name, working_dir)
     gs.download_tariff_zip(local_file_path)
-
     gs.extract_zip()
-
     gs.retrieves_ids()
     gs.save_ids(gs.tarrif_data)
     gs.upload_to_sheets(gs.tarrif_data)
-    gs.remove_files() #Uncomment during production
+    gs.remove_files() 
